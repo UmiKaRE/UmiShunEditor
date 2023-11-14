@@ -1,0 +1,105 @@
+[gd_scene load_steps=2 format=3 uid="uid://b1aeecgl688p8"]
+
+[ext_resource type="Script" path="res://UmiShunEditor/scenes/ArcEditor/ArcEditor.cs" id="1_kae02"]
+
+[node name="ArcEditor" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_kae02")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 3
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 3
+theme_override_constants/margin_bottom = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Content/VBoxContainer"]
+layout_mode = 2
+
+[node name="BtnOpen" type="Button" parent="Content/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open .arc"
+
+[node name="BtnDump" type="Button" parent="Content/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Dump all"
+
+[node name="Container" type="VBoxContainer" parent="Content/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Content/VBoxContainer/Container"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FileTree" type="Tree" parent="Content/VBoxContainer/Container/ScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 2
+column_titles_visible = true
+
+[node name="DebugLabel" type="Label" parent="Content/VBoxContainer/Container"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Nothing to display yet ..."
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Content/VBoxContainer/Container"]
+visible = false
+layout_mode = 2
+
+[node name="BtnCreateSubfolder" type="Button" parent="Content/VBoxContainer/Container/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Create subfolder"
+
+[node name="BtnRemoveEntry" type="Button" parent="Content/VBoxContainer/Container/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Remove"
+
+[node name="OpenArcFileDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Open a File"
+initial_position = 2
+size = Vector2i(392, 374)
+ok_button_text = "Open"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.arc")
+
+[node name="DumpDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Open a Directory"
+initial_position = 2
+size = Vector2i(392, 374)
+ok_button_text = "Select Current Folder"
+file_mode = 2
+access = 2
+filters = PackedStringArray("*.arc")
