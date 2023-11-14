@@ -1,0 +1,19 @@
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Umi Shun Editor", "Umi Shun Editor.csproj", "{F4E4CF03-FDE2-42EB-98F9-6C6DC2CE4A98}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+	Debug|Any CPU = Debug|Any CPU
+	ExportDebug|Any CPU = ExportDebug|Any CPU
+	ExportRelease|Any CPU = ExportRelease|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F4E4CF03-FDE2-42EB-98F9-6C6DC2CE4A98}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4E4CF03-FDE2-42EB-98F9-6C6DC2CE4A98}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4E4CF03-FDE2-42EB-98F9-6C6DC2CE4A98}.ExportDebug|Any CPU.ActiveCfg = ExportDebug|Any CPU
+		{F4E4CF03-FDE2-42EB-98F9-6C6DC2CE4A98}.ExportDebug|Any CPU.Build.0 = ExportDebug|Any CPU
+		{F4E4CF03-FDE2-42EB-98F9-6C6DC2CE4A98}.ExportRelease|Any CPU.ActiveCfg = ExportRelease|Any CPU
+		{F4E4CF03-FDE2-42EB-98F9-6C6DC2CE4A98}.ExportRelease|Any CPU.Build.0 = ExportRelease|Any CPU
+	EndGlobalSection
+EndGlobal
