@@ -5,16 +5,25 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UmiShun.Arc;
+using UmiShun.BinFileList;
 using UmiShunEditor.Utils;
 
 namespace UmiShunEditor;
 
 public partial class ArcEditor : Control
 {
+	[Flags]
+	private enum DumpFlags
+	{
+		None = 0,
+		DumpBinFiles = 1 << 0,
+	}
+
 	public ArcFile openedFile = null;
 
 	private Button _openArcButton => GetNode<Button>("%BtnOpen");
 	private Button _dumpArcButton => GetNode<Button>("%BtnDump");
+	private Button _dumpArcBinButton => GetNode<Button>("%BtnDumpBin");
 	private FileDialog _openArcFileDialog => GetNode<FileDialog>("%OpenArcFileDialog");
 	private FileDialog _dumpDialog => GetNode<FileDialog>("%DumpDialog");
 	private Tree _tree => GetNode<Tree>("%FileTree");
@@ -25,34 +34,58 @@ public partial class ArcEditor : Control
 	private BidirectionalDictionary<int, ArcEntry> _entryUidMapping = new ();
 	private int _lastFileUid = 0; 
 
+	private DumpFlags _dumpFlags = DumpFlags.None;
+
 	public override void _Ready()
 	{
 		_openArcButton.Pressed += OnOpenBtnPressed;
 		_openArcFileDialog.FileSelected += OnOpenArcFileDialogFileSelected;
 
 		_dumpArcButton.Pressed += OnDumpBtnPressed;
+		_dumpArcBinButton.Pressed += OnDumpBinBtnPressed;
 		_dumpDialog.DirSelected += OnDumpDialogFileSelected;
 	}
 
-    private void OnDumpBtnPressed()
+    private void OnDumpBinBtnPressed()
     {
+		_dumpFlags = DumpFlags.DumpBinFiles;
         _dumpDialog.Popup();
     }
 
-    private void DumpFiles(string pathTo, ArcFolderEntry folder)
+
+    private void OnDumpBtnPressed()
+    {
+		_dumpFlags = DumpFlags.None;
+        _dumpDialog.Popup();
+    }
+
+    private void DumpFiles(string pathTo, ArcFolderEntry folder, DumpFlags flags = DumpFlags.None)
 	{
 		foreach (var entry in folder.Entries)
 		{
+			string filePath = Path.Combine(pathTo, entry.Name);
+
 			if (entry is ArcFileEntry fileEntry)
 			{
-				string filePath = pathTo + entry.Name;
-				GD.Print($"writing to {filePath}");
-				Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-				File.WriteAllBytes(filePath, fileEntry.Content);
+				if (entry.Name.ToLower().EndsWith(".bin") 
+					&& BinFile.TryReadBinFile(fileEntry.Content, out BinFile binFile))
+				{
+					// If the file is a .bin file, we dump its contents as well
+					Directory.CreateDirectory(filePath);
+					for (int i = 0; i < binFile.FileCount; i++)
+					{
+						File.WriteAllBytes(Path.Combine(filePath, $"{i}.unknown"), binFile.Files[i]);
+					}
+				}
+				else
+				{
+					Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+					File.WriteAllBytes(filePath, fileEntry.Content);
+				}
 			}
 			else if (entry.Type == ArcEntry.EntryType.Folder)
 			{
-				DumpFiles(pathTo + entry.Name + "\\", (ArcFolderEntry)entry);
+				DumpFiles(filePath, (ArcFolderEntry)entry, flags);
 			}
 		}
 	}
@@ -112,7 +145,7 @@ public partial class ArcEditor : Control
     private void OnDumpDialogFileSelected(string path)
     {
 		GD.Print("Dumping files...");
-        DumpFiles(path.Replace("/", "\\") + "\\", openedFile.Root);
+        DumpFiles(path, openedFile.Root, _dumpFlags);
 		GD.Print("Done!");
     }
 
