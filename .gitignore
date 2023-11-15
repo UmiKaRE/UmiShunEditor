@@ -1,6 +1,9 @@
 # Godot 4+ specific ignores
 .godot/
 
+# For now
+export_presets.cfg
+
 # Shouldn't be there but I'm working on this alone anyway
 umires.arc
 dump/
