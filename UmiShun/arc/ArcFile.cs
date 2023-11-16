@@ -63,23 +63,23 @@ public class CustomComparer : IComparer<string>
 
 public class ArcFile
 {
-	public uint Unknown1;
-	public uint Unknown2;
+	public uint Unknown1 => 0x48434153;
+	public uint Unknown2 => 256;
 	public uint SectionCount => (uint)Root.GetFoldersRecursive().Count()+1;
 	public uint FileCount => (uint)Root.GetFilesRecursive().Count();
-	public uint ContentStartOffset;
+	// public uint ContentStartOffset;
 
 	public ArcFolderEntry Root;
 
 
-	private ArcFile()
+	public ArcFile()
 	{
 
 	}
 
-	private ArcFolderEntry ReadFolder(System.IO.BinaryReader reader, long offset)
+	private ArcFolderEntry ReadFolder(BinaryReader reader, long offset)
 	{
-		reader.BaseStream.Seek(offset, System.IO.SeekOrigin.Begin);
+		reader.BaseStream.Seek(offset, SeekOrigin.Begin);
 		uint fileCount = reader.ReadUInt32();
 
 
@@ -99,14 +99,14 @@ public class ArcFile
 			}
 			long lastFileEndPosition = reader.BaseStream.Position; // save to get back there
 
-			reader.BaseStream.Seek(nameOffset, System.IO.SeekOrigin.Begin);
+			reader.BaseStream.Seek(nameOffset, SeekOrigin.Begin);
 			string entryName = reader.ReadSZString().StripEdges();
 
 			if (entryType == 0x0)
 			{
 				var fileEntry = new ArcFileEntry();
 				fileEntry.Name = entryName;
-				reader.BaseStream.Seek(contentLocation, System.IO.SeekOrigin.Begin);
+				reader.BaseStream.Seek(contentLocation, SeekOrigin.Begin);
 				fileEntry.Content = reader.ReadBytes((int)size);
 				folder.Entries[i] = fileEntry;
 			}
@@ -121,7 +121,7 @@ public class ArcFile
 				throw new Exception("Unknown entry type");
 			}
 			
-			reader.BaseStream.Seek(lastFileEndPosition, System.IO.SeekOrigin.Begin);
+			reader.BaseStream.Seek(lastFileEndPosition, SeekOrigin.Begin);
 		}
 		return folder;
 	}
@@ -230,15 +230,15 @@ public class ArcFile
 		writer.Write(contentBytes);
 	}
 
-	public static ArcFile ReadBinaryStream(System.IO.BinaryReader reader)
+	public static ArcFile ReadBinaryStream(BinaryReader reader)
 	{
 		var arc = new ArcFile();
-		reader.BaseStream.Seek(0, System.IO.SeekOrigin.Begin);
-		arc.Unknown1 = reader.ReadUInt32();
-		arc.Unknown2 = reader.ReadUInt32();
-		_ = reader.ReadUInt32();
-		_ = reader.ReadUInt32();
-		arc.ContentStartOffset = reader.ReadUInt32();
+		reader.BaseStream.Seek(0, SeekOrigin.Begin);
+		_ = reader.ReadUInt32();	// Unknown1
+		_ = reader.ReadUInt32();	// Unknown2
+		_ = reader.ReadUInt32();	// SectionCount
+		_ = reader.ReadUInt32();	// FileCount
+		_ = reader.ReadUInt32();	// ContentStartOffset
 
 
 		arc.Root = arc.ReadFolder(reader, reader.BaseStream.Position);
@@ -250,6 +250,44 @@ public class ArcFile
 		// Console.WriteLine("FileCount: " + arc.FileCount);
 		// Console.WriteLine("ContentStartOffset: " + arc.ContentStartOffset);
 
+		return arc;
+	}
+
+
+	private static void GenerateFolderFromDiskFolder(ArcFolderEntry folder, string path)
+	{
+		var dir = new DirectoryInfo(path);
+		var files = dir.GetFiles();
+		var subDirs = dir.GetDirectories();
+
+		folder.Entries = new ArcEntry[files.Length + subDirs.Length];
+		for (int i = 0; i < files.Length; ++i)
+		{
+			var file = files[i];
+			var fileEntry = new ArcFileEntry();
+			fileEntry.Name = file.Name;
+			fileEntry.Content = File.ReadAllBytes(file.FullName);
+			folder.Entries[i] = fileEntry;
+		}
+		for (int i = 0; i < subDirs.Length; ++i)
+		{
+			var subDir = subDirs[i];
+			var subFolder = new ArcFolderEntry();
+			subFolder.Name = subDir.Name;
+			folder.Entries[files.Length + i] = subFolder;
+			GenerateFolderFromDiskFolder(subFolder, subDir.FullName);
+		}
+	}
+
+	public static ArcFile CreateFromDisk(string path)
+	{
+		var rootDir = new DirectoryInfo(path);
+
+		var arc = new ArcFile();
+		arc.Root = new ArcFolderEntry();
+		arc.Root.Name = "";
+		arc.Root.Entries = new ArcEntry[0];
+		GenerateFolderFromDiskFolder(arc.Root, path);
 		return arc;
 	}
 }

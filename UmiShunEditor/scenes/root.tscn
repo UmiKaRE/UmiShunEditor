@@ -42,20 +42,25 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Open .arc"
 
+[node name="BtnOpenFolder" type="Button" parent="Content/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open folder as .arc"
+
 [node name="BtnDump" type="Button" parent="Content/VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Dump"
+text = "Dump to disk"
 
 [node name="BtnDumpBin" type="Button" parent="Content/VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Dump (+ extract .bin files)"
 
-[node name="BtnDumpBin2" type="Button" parent="Content/VBoxContainer/HBoxContainer"]
+[node name="BtnPack" type="Button" parent="Content/VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Pack to .arc"
+text = "Save as ..."
 
 [node name="Container" type="VBoxContainer" parent="Content/VBoxContainer"]
 layout_mode = 2
@@ -106,7 +111,7 @@ filters = PackedStringArray("*.arc")
 
 [node name="OpenFolderToPackDialog" type="FileDialog" parent="."]
 unique_name_in_owner = true
-title = "Open a folder to pack"
+title = "Open a Directory"
 initial_position = 2
 size = Vector2i(454, 374)
 ok_button_text = "Select Current Folder"
@@ -127,7 +132,7 @@ filters = PackedStringArray("*.arc")
 unique_name_in_owner = true
 title = "Open a Directory"
 initial_position = 2
-size = Vector2i(392, 374)
+size = Vector2i(454, 374)
 ok_button_text = "Select Current Folder"
 file_mode = 2
 access = 2

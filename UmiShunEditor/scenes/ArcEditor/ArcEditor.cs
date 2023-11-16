@@ -22,10 +22,14 @@ public partial class ArcEditor : Control
 	public ArcFile openedFile = null;
 
 	private Button _openArcButton => GetNode<Button>("%BtnOpen");
+	private Button _openFolderButton => GetNode<Button>("%BtnOpenFolder");
 	private Button _dumpArcButton => GetNode<Button>("%BtnDump");
 	private Button _dumpArcBinButton => GetNode<Button>("%BtnDumpBin");
+	private Button _packArcButton => GetNode<Button>("%BtnPack");
 	private FileDialog _openArcFileDialog => GetNode<FileDialog>("%OpenArcFileDialog");
 	private FileDialog _dumpDialog => GetNode<FileDialog>("%DumpDialog");
+	private FileDialog _openFolderToPackDialog => GetNode<FileDialog>("%OpenFolderToPackDialog");
+	private FileDialog _selectFilePackDialog => GetNode<FileDialog>("%SelectFilePackDialog");
 	private Tree _tree => GetNode<Tree>("%FileTree");
 
 	private Label _debugLabel => GetNode<Label>("%DebugLabel");
@@ -39,12 +43,56 @@ public partial class ArcEditor : Control
 	public override void _Ready()
 	{
 		_openArcButton.Pressed += OnOpenBtnPressed;
+		_openFolderButton.Pressed += () => _openFolderToPackDialog.Popup();
 		_openArcFileDialog.FileSelected += OnOpenArcFileDialogFileSelected;
 
 		_dumpArcButton.Pressed += OnDumpBtnPressed;
 		_dumpArcBinButton.Pressed += OnDumpBinBtnPressed;
 		_dumpDialog.DirSelected += OnDumpDialogFileSelected;
+
+		_packArcButton.Pressed += () => _selectFilePackDialog.Popup();
+		_openFolderToPackDialog.DirSelected += OnOpenFolderToPackDialogDirSelected;
+		_selectFilePackDialog.FileSelected += OnSelectFilePackDialogFileSelected;
 	}
+
+	private void RecreateUiTree()
+	{
+		_tree.Clear();
+		_tree.Columns = 2;
+		_tree.ColumnTitlesVisible = true;
+		_tree.SetColumnExpand(0, false);
+		_tree.SetColumnExpand(1, true);
+		_tree.SetColumnTitle(0, "Name");
+		_tree.SetColumnTitle(1, "Size");
+		_tree.HideRoot = true;
+		
+		// Regenerate the tree and the mapping
+		_entryUidMapping.Clear();
+		_lastFileUid = 0;
+		GenerateUiTree(openedFile.Root, _tree.CreateItem());
+	}
+
+
+    private void OnOpenFolderToPackDialogDirSelected(string dir)
+    {
+		openedFile = ArcFile.CreateFromDisk(dir);
+
+		RecreateUiTree();
+    }
+
+    private void OnSelectFilePackDialogFileSelected(string path)
+    {
+		using (var stream = File.Open(path, FileMode.Create))
+		{
+			using (var writer = new BinaryWriter(stream))
+			{
+				openedFile.Save(writer);
+			}
+		}
+    }
+
+
+
 
     private void OnDumpBinBtnPressed()
     {
@@ -67,8 +115,9 @@ public partial class ArcEditor : Control
 
 			if (entry is ArcFileEntry fileEntry)
 			{
-				if (entry.Name.ToLower().EndsWith(".bin") 
-					&& BinFile.TryReadBinFile(fileEntry.Content, out BinFile binFile))
+				if (flags.HasFlag(DumpFlags.DumpBinFiles) &&
+					entry.Name.ToLower().EndsWith(".bin") &&
+					BinFile.TryReadBinFile(fileEntry.Content, out BinFile binFile))
 				{
 					// If the file is a .bin file, we dump its contents as well
 					Directory.CreateDirectory(filePath);
@@ -165,27 +214,7 @@ public partial class ArcEditor : Control
 			}
 		}
 
-		_tree.Clear();
-		_tree.Columns = 2;
-		_tree.ColumnTitlesVisible = true;
-		_tree.SetColumnExpand(0, false);
-		_tree.SetColumnExpand(1, true);
-		_tree.SetColumnTitle(0, "Name");
-		_tree.SetColumnTitle(1, "Size");
-		_tree.HideRoot = true;
-		
-		// Regenerate the tree and the mapping
-		_entryUidMapping.Clear();
-		_lastFileUid = 0;
-		GenerateUiTree(openedFile.Root, _tree.CreateItem());
-
-		using (var stream = File.Open("OUT.arc", FileMode.Create))
-		{
-			using (var writer = new BinaryWriter(stream))
-			{
-				openedFile.Save(writer);
-			}
-		}
+		RecreateUiTree();
 	}
 
 
