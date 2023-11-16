@@ -8,6 +8,59 @@ using UmiShun.Utils;
 
 namespace UmiShun.Arc;
 
+internal class CustomSortComparer : IComparer<(string path, ArcFolderEntry e)>
+{
+    public int Compare((string path, ArcFolderEntry e) a, (string path, ArcFolderEntry e) b)
+    {
+        // Compare in reverse alphabetical order
+        int alphabeticalComparison = string.Compare(b.path, a.path);
+
+        // Check if one path is the prefix of the other
+        if (b.path.StartsWith(a.path+"/"))
+        {
+            return -int.MaxValue; // x is a prefix of y, so x should come first
+        }
+        else if (a.path.StartsWith(b.path+"/"))
+        {
+            return int.MaxValue; // y is a prefix of x, so y should come first
+        }
+
+        return alphabeticalComparison;
+    }
+}
+
+
+public class CustomComparer : IComparer<string>
+{
+    public int Compare(string x, string y)
+    {
+        // Compare strings based on characters
+        for (int i = 0; i < Math.Min(x.Length, y.Length); i++)
+        {
+            if (x[i] == '_')
+            {
+                if (y[i] != '_')
+                {
+                    return 1; // "_" has lower priority, so x should come first
+                }
+            }
+            else if (y[i] == '_')
+            {
+                return -1; // "_" has lower priority, so y should come first
+            }
+
+            int charComparison = x[i].CompareTo(y[i]);
+            if (charComparison != 0)
+            {
+                return charComparison;
+            }
+        }
+
+        // If one string is a prefix of the other, the shorter string comes first
+        return x.Length.CompareTo(y.Length);
+    }
+}
+
 public class ArcFile
 {
 	public uint Unknown1;
@@ -77,11 +130,13 @@ public class ArcFile
 	public void Save(BinaryWriter writer)
 	{
 		var folders = Root.GetFoldersRecursive().ToList();
-		folders.Sort((a, b) => b.path.CompareTo(a.path));	// reverse alphabetical (i think that's what is used in original .arc)
+		folders.Sort(new CustomSortComparer());
 		folders.Insert(0,("",Root));
+		GD.Print($"--- FOLDERS ---");
+			GD.Print(folders.Select(x=>x.path).Aggregate((a, b) => $"{a} ; {b}"));
 		
 		var files = Root.GetFilesRecursive().ToList();
-		files.Sort((a, b) => a.path.CompareTo(b.path));
+		files.Sort((a, b) => -a.path.CompareTo(b.path));
 
 		List<ArcEntry> allEntries = new();
 		allEntries.AddRange(folders.Select(x=>x.entry));
@@ -90,24 +145,51 @@ public class ArcFile
 		// get global info
 		int headerSize = (allEntries.Count-1) * 4 * 4 + folders.Count * 4;	// 4 bytes per int, 4 ints per file
 		int contentTotalSize = files.Select(x => x.entry is ArcFileEntry fEntry ? fEntry.Content.Length : 0).Aggregate((a, b) => a + b);
+		int nameListSize = allEntries.Select(x => x.Name.Length + 1).Aggregate((a, b) => a + b) - 1;
+		int contentOffset = 4*5 + headerSize + nameListSize;
 		
-		// build name list
+		// precompute header offsets & name list
+		Dictionary<ArcFolderEntry, int> foldersHeaderOffsets = new();
 		Dictionary<ArcEntry, int> entryNameOffsets = new();
+		Dictionary<ArcFileEntry, int> fileContentOffsets = new();
+		byte[] contentBytes = new byte[contentTotalSize];		
+		
+		int tmpHeaderOffset = 20;
 		int tmpNameOffset = headerSize + 20;
 		string nameList = "";
-		foreach (var entry in allEntries)
+		int tmpContentBufferOffset = 0;
+		foreach (var folder in folders)
 		{
-			if (entry == Root)
-				continue;	// root has no name
-			entryNameOffsets[entry] = tmpNameOffset;
-			nameList += entry.Name + "\0";
-			tmpNameOffset += entry.Name.Length + 1;
+			var sortedEntries = folder.entry.Entries.OrderByDescending(x => x.Type).ThenByDescending(x => x.Name, new CustomComparer()).ToList();
+			folder.entry.Entries = sortedEntries.ToArray<ArcEntry>();
+			GD.Print($"--- {folder.path} ---");
+			GD.Print(sortedEntries.Select(x=>x.Name).Aggregate((a, b) => $"{a} ; {b}"));
+
+			foldersHeaderOffsets[folder.entry] = tmpHeaderOffset;
+			tmpHeaderOffset += folder.entry.Entries.Length * 4 * 4 + 4;
+
+			foreach (var entry in sortedEntries)
+			{
+				if (entry == Root)
+					continue;	// root has no name
+				entryNameOffsets[entry] = tmpNameOffset;
+				string toAppend = entry.Name + "\0";
+				nameList += toAppend;
+				tmpNameOffset += toAppend.Length;
+				
+				if (entry is ArcFileEntry fileEntry)
+				{
+					fileEntry.Content.CopyTo(contentBytes, tmpContentBufferOffset);
+					fileContentOffsets[fileEntry] = tmpContentBufferOffset + contentOffset;
+					tmpContentBufferOffset += fileEntry.Content.Length;
+				}
+			}
 		}
 		byte[] nameListBytes = nameList.ToAsciiBuffer();
+		if (nameListSize != nameListBytes.Length)
+			throw new Exception("Name list size mismatch");
 
-
-		int contentOffset = 4*5 + headerSize + nameListBytes.Length;
-
+		
 		// Write 5 first integers (20 first bytes)
 		writer.Seek(0, SeekOrigin.Begin);
 		writer.Write(Unknown1);
@@ -116,20 +198,10 @@ public class ArcFile
 		writer.Write(allEntries.Count);
 		writer.Write(contentOffset);
 
-
-		// precompute header offsets
-		Dictionary<ArcFolderEntry, int> foldersHeaderOffsets = new();
-		int tmpHeaderOffset = 20;
-		foreach (var folder in folders)
-		{
-			foldersHeaderOffsets[folder.entry] = tmpHeaderOffset;
-			tmpHeaderOffset += folder.entry.Entries.Length * 4 + 1;
-		}
-
 		// Build header and content bytes simultaneously
-		byte[] contentBytes = new byte[contentTotalSize];		
 
-		int tmpContentByteOffset = 0;
+
+		
 		for(int folderIdx = 0; folderIdx < folders.Count; ++folderIdx)
 		{
 			var folder = folders[folderIdx].entry;
@@ -140,14 +212,12 @@ public class ArcFile
 				{	
 					writer.Write(0x0);	// folder flag
 					writer.Write(entryNameOffsets[entry]);	// name offset
-					writer.Write(tmpContentByteOffset);
+					writer.Write(fileContentOffsets[fileEntry]);	// location of file content
 					writer.Write(fileEntry.Content.Length);
-					fileEntry.Content.CopyTo(contentBytes, tmpContentByteOffset);
-					tmpContentByteOffset += fileEntry.Content.Length;
 				}
 				else if (entry is ArcFolderEntry folderEntry)
 				{
-					writer.Write(0x00000080);	// folder flag
+					writer.Write(0x80000000);	// folder flag
 					writer.Write(entryNameOffsets[entry]);	// name offset
 					writer.Write(foldersHeaderOffsets[folderEntry]);	// location of folder header
 					writer.Write(0x0);	// size

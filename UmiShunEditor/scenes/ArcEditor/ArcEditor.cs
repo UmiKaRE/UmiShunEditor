@@ -178,7 +178,16 @@ public partial class ArcEditor : Control
 		_entryUidMapping.Clear();
 		_lastFileUid = 0;
 		GenerateUiTree(openedFile.Root, _tree.CreateItem());
+
+		using (var stream = File.Open("OUT.arc", FileMode.Create))
+		{
+			using (var writer = new BinaryWriter(stream))
+			{
+				openedFile.Save(writer);
+			}
+		}
 	}
+
 
 	private void OnTreeItemSelected()
 	{
