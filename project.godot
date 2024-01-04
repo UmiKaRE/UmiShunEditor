@@ -13,7 +13,8 @@ config_version=5
 config/name="Umihara Kawase Shun Editor"
 run/main_scene="res://UmiShunEditor/scenes/root.tscn"
 config/features=PackedStringArray("4.2", "C#", "GL Compatibility")
-config/icon="res://icon.svg"
+config/icon="res://UmiShunEditor/resources/ui/icon.png"
+config/windows_native_icon="res://UmiShunEditor/resources/ui/icon.ico"
 
 [display]
 
